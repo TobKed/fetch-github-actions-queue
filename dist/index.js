@@ -1481,6 +1481,13 @@ function run() {
         const [owner, repo] = repository.split('/');
         core.info(`\n############### Fetch GitHub Action Queue start ##################\n` +
             `repository: "${repository}"`);
+        const repoWorkflowRuns = yield octokit.paginate(yield octokit.actions.listRepoWorkflowRuns({
+            owner,
+            repo
+        }));
+        for (const workflowRun of repoWorkflowRuns) {
+            core.info(`workflowRun: ${workflowRun}`);
+        }
     });
 }
 run()

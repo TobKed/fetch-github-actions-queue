@@ -31,6 +31,17 @@ async function run(): Promise<void> {
       `repository: "${repository}"`
   )
 
+  const repoWorkflowRuns = await octokit.paginate(
+    await octokit.actions.listRepoWorkflowRuns({
+      owner,
+      repo
+    })
+  )
+  for (const workflowRun of repoWorkflowRuns) {
+        core.info(`workflowRun: ${workflowRun}`
+      )
+    }
+
 }
 
 run()
