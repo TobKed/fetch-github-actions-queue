@@ -21,14 +21,14 @@ async function printDebug(
 
 async function run(): Promise<void> {
   const token = core.getInput('token', {required: true})
-  const repostiory = core.getInput('repostiory', {required: true})
+  const repository = core.getInput('repository', {required: true})
   const octokit = new github.GitHub(token)
   const context = github.context
   const [owner, repo] = repository.split('/')
 
   core.info(
     `\n############### Fetch GitHub Action Queue start ##################\n` +
-      `repository: "${repostiory}"`
+      `repository: "${repository}"`
   )
 
 }
