@@ -8,6 +8,11 @@ inputs:
   repository:
     description: 'Repository'
     required: true
+outputs:
+  workflowRuns:
+    description: JSON with array payload of not finished workflow runs
+  nrOfWorkflowRuns:
+    description: Number of not finished workflow runs
 runs:
   using: 'node12'
   main: 'dist/index.js'
