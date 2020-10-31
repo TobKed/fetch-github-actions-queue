@@ -31,17 +31,18 @@ async function run(): Promise<void> {
       `repository: "${repository}"`
   )
 
-  const repoWorkflowRuns = await octokit.paginate(
+  for (const status of [`queued`, `in_progress`]) {
+    const repoWorkflowRunsQueued = await octokit.paginate(
       octokit.actions.listRepoWorkflowRuns.endpoint.merge({
-        owner: owner,
-        repo: repo
+        owner,
+        repo,
+        status
       })
-  )
-  for (const workflowRun of repoWorkflowRuns) {
-        core.info(`workflowRun: ${workflowRun}`
-      )
+    )
+    for (const workflowRun of repoWorkflowRunsQueued) {
+      core.info(`workflowRun [${status}]: ${workflowRun}`)
     }
-
+  }
 }
 
 run()
