@@ -1466,131 +1466,6 @@ function getRequiredEnv(key) {
     }
     return value;
 }
-function verboseOutput(name, value) {
-    core.info(`Setting output: ${name}: ${value}`);
-    core.setOutput(name, value);
-}
-function getPullRequest(octokit, owner, repo, pullRequestNumber) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Fetching pull request with number: ${pullRequestNumber}`);
-        const pullRequest = yield octokit.pulls.get({
-            owner,
-            repo,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            pull_number: pullRequestNumber
-        });
-        return pullRequest.data;
-    });
-}
-function getPullRequestLabels(pullRequest) {
-    const labelNames = pullRequest
-        ? pullRequest.labels.map(label => label.name)
-        : [];
-    return labelNames;
-}
-function getReviews(octokit, owner, repo, number, getComitters) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let reviews = [];
-        const options = octokit.pulls.listReviews.endpoint.merge({
-            owner,
-            repo,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            pull_number: number
-        });
-        yield octokit.paginate(options).then(r => {
-            reviews = r;
-        });
-        const reviewers = reviews ? reviews.map(review => review.user.login) : [];
-        const reviewersAlreadyChecked = [];
-        const committers = [];
-        if (getComitters) {
-            core.info('Checking reviewers permissions:');
-            for (const reviewer of reviewers) {
-                if (!reviewersAlreadyChecked.includes(reviewer)) {
-                    const p = yield octokit.repos.getCollaboratorPermissionLevel({
-                        owner,
-                        repo,
-                        username: reviewer
-                    });
-                    const permission = p.data.permission;
-                    if (permission === 'admin' || permission === 'write') {
-                        committers.push(reviewer);
-                    }
-                    core.info(`\t${reviewer}: ${permission}`);
-                    reviewersAlreadyChecked.push(reviewer);
-                }
-            }
-        }
-        return [reviews, reviewers, committers];
-    });
-}
-function processReviews(reviews, reviewers, committers, requireCommittersApproval) {
-    let isApproved = false;
-    const reviewStates = {};
-    for (const review of reviews) {
-        if (review.state === 'APPROVED' || review.state === 'CHANGES_REQUESTED') {
-            if (requireCommittersApproval && committers.includes(review.user.login)) {
-                reviewStates[review.user.login] = review.state;
-            }
-            else if (!requireCommittersApproval) {
-                reviewStates[review.user.login] = review.state;
-            }
-        }
-    }
-    core.info(`Reviews:`);
-    for (const user in reviewStates) {
-        core.info(`\t${user}: ${reviewStates[user].toLowerCase()}`);
-    }
-    for (const user in reviewStates) {
-        if (reviewStates[user] === 'APPROVED') {
-            isApproved = true;
-            break;
-        }
-    }
-    for (const user in reviewStates) {
-        if (reviewStates[user] === 'CHANGES_REQUESTED') {
-            isApproved = false;
-            break;
-        }
-    }
-    return isApproved;
-}
-function setLabel(octokit, owner, repo, pullRequestNumber, label) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Setting label: ${label}`);
-        yield octokit.issues.addLabels({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            issue_number: pullRequestNumber,
-            labels: [label],
-            owner,
-            repo
-        });
-    });
-}
-function removeLabel(octokit, owner, repo, pullRequestNumber, label) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Removing label: ${label}`);
-        yield octokit.issues.removeLabel({
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            issue_number: pullRequestNumber,
-            name: label,
-            owner,
-            repo
-        });
-    });
-}
-function addComment(octokit, owner, repo, pullRequestNumber, comment) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Adding comment: ${comment}`);
-        yield octokit.issues.createComment({
-            owner,
-            repo,
-            // eslint-disable-next-line @typescript-eslint/camelcase
-            issue_number: pullRequestNumber,
-            body: comment
-        });
-    });
-}
 function printDebug(item, description = '') {
     return __awaiter(this, void 0, void 0, function* () {
         const itemJson = JSON.stringify(item);
@@ -1600,69 +1475,16 @@ function printDebug(item, description = '') {
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const token = core.getInput('token', { required: true });
-        const userLabel = core.getInput('label') || 'not set';
-        const requireCommittersApproval = core.getInput('require_committers_approval') === 'true';
-        const comment = core.getInput('comment') || '';
-        const pullRequestNumberInput = core.getInput('pullRequestNumber') || 'not set';
+        const repository = core.getInput('repository', { required: true });
         const octokit = new github.GitHub(token);
         const context = github.context;
-        const repository = getRequiredEnv('GITHUB_REPOSITORY');
-        const eventName = getRequiredEnv('GITHUB_EVENT_NAME');
         const [owner, repo] = repository.split('/');
-        let pullRequestNumber;
-        core.info(`\n############### Set Label When Approved start ##################\n` +
-            `label: "${userLabel}"\n` +
-            `requireCommittersApproval: ${requireCommittersApproval}\n` +
-            `comment: ${comment}\n` +
-            `pullRequestNumber: ${pullRequestNumberInput}`);
-        if (eventName === 'pull_request_review') {
-            pullRequestNumber = context.payload.pull_request
-                ? context.payload.pull_request.number
-                : undefined;
-            if (pullRequestNumber === undefined) {
-                throw Error(`Could not find PR number in context payload.`);
-            }
-        }
-        else if (eventName === 'workflow_run') {
-            if (pullRequestNumberInput === 'not set') {
-                throw Error(`If action is triggered by "workflow_run" then input "pullRequestNumber" is required.`);
-            }
-            pullRequestNumber = parseInt(pullRequestNumberInput);
-        }
-        else {
-            throw Error(`This action is only useful in "pull_request_review" or "workflow_run" triggered runs and you used it in "${eventName}"`);
-        }
-        // PULL REQUEST
-        const pullRequest = yield getPullRequest(octokit, owner, repo, pullRequestNumber);
-        // LABELS
-        const labelNames = getPullRequestLabels(pullRequest);
-        // REVIEWS
-        const [reviews, reviewers, committers] = yield getReviews(octokit, owner, repo, pullRequest.number, requireCommittersApproval);
-        const isApproved = processReviews(reviews, reviewers, committers, requireCommittersApproval);
-        // HANDLE LABEL
-        let isLabelShouldBeSet = false;
-        let isLabelShouldBeRemoved = false;
-        if (userLabel !== 'not set') {
-            isLabelShouldBeSet = isApproved && !labelNames.includes(userLabel);
-            isLabelShouldBeRemoved = !isApproved && labelNames.includes(userLabel);
-            if (isLabelShouldBeSet) {
-                yield setLabel(octokit, owner, repo, pullRequest.number, userLabel);
-                if (comment !== '') {
-                    yield addComment(octokit, owner, repo, pullRequest.number, comment);
-                }
-            }
-            else if (isLabelShouldBeRemoved) {
-                yield removeLabel(octokit, owner, repo, pullRequest.number, userLabel);
-            }
-        }
-        // OUTPUT
-        verboseOutput('isApproved', String(isApproved));
-        verboseOutput('labelSet', String(isLabelShouldBeSet));
-        verboseOutput('labelRemoved', String(isLabelShouldBeRemoved));
+        core.info(`\n############### Fetch GitHub Action Queue start ##################\n` +
+            `repository: "${repository}"`);
     });
 }
 run()
-    .then(() => core.info('\n############### Set Label When Approved complete ##################\n'))
+    .then(() => core.info('\n############### Fetch GitHub Action Queue complete ##################\n'))
     .catch(e => core.setFailed(e.message));
 
 
