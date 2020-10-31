@@ -1,0 +1,16 @@
+name: 'Fetch GitHub Action Queue'
+description: 'Fetch Github Action queues and pending workflows for repository for statistics'
+author: 'TobKed'
+inputs:
+  token:
+    description: 'The GITHUB_TOKEN secret of the repository'
+    required: true
+  repository:
+    description: 'Repository'
+    required: true
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
+branding:
+  icon: 'play'
+  color: 'blue'
