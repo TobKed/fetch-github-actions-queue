@@ -1458,29 +1458,20 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const github = __importStar(__webpack_require__(469));
 const core = __importStar(__webpack_require__(393));
-function getRequiredEnv(key) {
-    const value = process.env[key];
-    if (value === undefined) {
-        const message = `${key} was not defined.`;
-        throw new Error(message);
-    }
-    return value;
-}
-function printDebug(item, description = '') {
-    return __awaiter(this, void 0, void 0, function* () {
-        const itemJson = JSON.stringify(item);
-        core.debug(`\n ######### ${description} ######### \n: ${itemJson}\n\n`);
-    });
+function verboseOutput(name, value) {
+    core.info(`Setting output: ${name}: ${value}`);
+    core.setOutput(name, value);
 }
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const token = core.getInput('token', { required: true });
         const repository = core.getInput('repository', { required: true });
         const octokit = new github.GitHub(token);
-        const context = github.context;
         const [owner, repo] = repository.split('/');
         core.info(`\n############### Fetch GitHub Action Queue start ##################\n` +
             `repository: "${repository}"`);
+        const queuedWorkflowRuns = [];
+        const inProgressWorkflowRuns = [];
         for (const status of [`queued`, `in_progress`]) {
             const repoWorkflowRunsQueued = yield octokit.paginate(octokit.actions.listRepoWorkflowRuns.endpoint.merge({
                 owner,
@@ -1488,10 +1479,18 @@ function run() {
                 status
             }));
             for (const workflowRun of repoWorkflowRunsQueued) {
-                const itemJson = JSON.stringify(workflowRun);
-                core.info(`workflowRun [${status}]: ${itemJson}`);
+                if (status === `queued`) {
+                    queuedWorkflowRuns.push(workflowRun);
+                }
+                if (status === `in_progress`) {
+                    inProgressWorkflowRuns.push(workflowRun);
+                }
             }
         }
+        verboseOutput('queuedWorkflowRuns', JSON.stringify(queuedWorkflowRuns));
+        verboseOutput('inProgressWorkflowRuns', JSON.stringify(inProgressWorkflowRuns));
+        verboseOutput('nrOfQueuedWorkflowRuns', String(queuedWorkflowRuns.length));
+        verboseOutput('nrOfInProgressWorkflowRuns', String(inProgressWorkflowRuns.length));
     });
 }
 run()
