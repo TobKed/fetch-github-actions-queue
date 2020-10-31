@@ -1488,7 +1488,8 @@ function run() {
                 status
             }));
             for (const workflowRun of repoWorkflowRunsQueued) {
-                core.info(`workflowRun [${status}]: ${workflowRun}`);
+                const itemJson = JSON.stringify(workflowRun);
+                core.info(`workflowRun [${status}]: ${itemJson}`);
             }
         }
     });
