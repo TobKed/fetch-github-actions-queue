@@ -32,10 +32,10 @@ async function run(): Promise<void> {
   )
 
   const repoWorkflowRuns = await octokit.paginate(
-    await octokit.actions.listRepoWorkflowRuns({
-      owner,
-      repo
-    })
+      octokit.actions.listRepoWorkflowRuns.endpoint.merge({
+        owner: owner,
+        repo: repo
+      })
   )
   for (const workflowRun of repoWorkflowRuns) {
         core.info(`workflowRun: ${workflowRun}`
