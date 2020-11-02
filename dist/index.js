@@ -1470,8 +1470,7 @@ function run() {
         const [owner, repo] = repository.split('/');
         core.info(`\n############### Fetch GitHub Action Queue start ##################\n` +
             `repository: "${repository}"`);
-        const queuedWorkflowRuns = [];
-        const inProgressWorkflowRuns = [];
+        const workflowRuns = [];
         for (const status of [`queued`, `in_progress`]) {
             const repoWorkflowRunsQueued = yield octokit.paginate(octokit.actions.listRepoWorkflowRuns.endpoint.merge({
                 owner,
@@ -1479,18 +1478,11 @@ function run() {
                 status
             }));
             for (const workflowRun of repoWorkflowRunsQueued) {
-                if (status === `queued`) {
-                    queuedWorkflowRuns.push(workflowRun);
-                }
-                if (status === `in_progress`) {
-                    inProgressWorkflowRuns.push(workflowRun);
-                }
+                workflowRuns.push(workflowRun);
             }
         }
-        verboseOutput('queuedWorkflowRuns', JSON.stringify(queuedWorkflowRuns));
-        verboseOutput('inProgressWorkflowRuns', JSON.stringify(inProgressWorkflowRuns));
-        verboseOutput('nrOfQueuedWorkflowRuns', String(queuedWorkflowRuns.length));
-        verboseOutput('nrOfInProgressWorkflowRuns', String(inProgressWorkflowRuns.length));
+        verboseOutput('workflowRuns', JSON.stringify(workflowRuns));
+        verboseOutput('nrOfWorkflowRuns', String(workflowRuns.length));
     });
 }
 run()

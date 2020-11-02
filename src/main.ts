@@ -17,8 +17,7 @@ async function run(): Promise<void> {
       `repository: "${repository}"`
   )
 
-  const queuedWorkflowRuns = []
-  const inProgressWorkflowRuns = []
+  const workflowRuns = []
 
   for (const status of [`queued`, `in_progress`]) {
     const repoWorkflowRunsQueued = await octokit.paginate(
@@ -29,26 +28,12 @@ async function run(): Promise<void> {
       })
     )
     for (const workflowRun of repoWorkflowRunsQueued) {
-      if (status === `queued`) {
-        queuedWorkflowRuns.push(workflowRun)
-      }
-      if (status === `in_progress`) {
-        inProgressWorkflowRuns.push(workflowRun)
-      }
+      workflowRuns.push(workflowRun)
     }
   }
 
-  verboseOutput('queuedWorkflowRuns', JSON.stringify(queuedWorkflowRuns))
-  verboseOutput(
-    'inProgressWorkflowRuns',
-    JSON.stringify(inProgressWorkflowRuns)
-  )
-
-  verboseOutput('nrOfQueuedWorkflowRuns', String(queuedWorkflowRuns.length))
-  verboseOutput(
-    'nrOfInProgressWorkflowRuns',
-    String(inProgressWorkflowRuns.length)
-  )
+  verboseOutput('workflowRuns', JSON.stringify(workflowRuns))
+  verboseOutput('nrOfWorkflowRuns', String(workflowRuns.length))
 }
 
 run()
