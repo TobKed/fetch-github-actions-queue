@@ -66,7 +66,7 @@ jobs:
         repository: ["airflow", "beam"]
     steps:
     - name: Fetch GitHub Action queue
-      uses: TobKed/fetch-github-actions-queue@develop
+      uses: TobKed/fetch-github-actions-queue@v1
       id: fetch-queue
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
