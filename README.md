@@ -74,17 +74,13 @@ jobs:
     - name: Save to JSON and CSV
       run: |
         TIMESTAMP=`date --utc +%Y%m%d_%H%M%SZ`
-        TIMESTAMP_ISO8601=`date --utc +%FT%T%Z`
-        JSON_FILE="${TIMESTAMP}.json"
-        echo ${{ toJson(steps.fetch-queue.outputs.workflowRuns) }} > "${JSON_FILE}"
-        python json_to_csv.py -i $JSON_FILE -o "${TIMESTAMP}.csv" -a "{\"write_timestamp\":\"${TIMESTAMP_ISO8601}\"}"
+        echo ${{ toJson(steps.fetch-queue.outputs.workflowRuns) }} > "${TIMESTAMP}.json"
     - name: Upload artifacts
       uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.repository }}-${{ matrix.repository }}-queue
         path: |
           *.json
-          *.csv
 ```
 
 # Development environment
