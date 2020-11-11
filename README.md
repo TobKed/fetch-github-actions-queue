@@ -1,4 +1,4 @@
-# LFetch GitHub Action Queue
+# Fetch GitHub Action Queue
 
 <p><a href="https://github.com/TobKed/label-when-approved-action/actions">
 <img alt="label-when-approved-action status"
@@ -14,7 +14,7 @@
   - [Inputs](#inputs)
   - [Outputs](#outputs)
 - [Examples](#examples)
-    - [Workflow Run event](#workflow-run-event)
+    - [Fetch GitHub Action queue](#fetch-github-action-queue)
 - [Development environment](#development-environment)
 - [License](#license)
 
@@ -22,6 +22,8 @@
 
 # Context and motivation
 
+Since GItHub provide very poor or zero statistics about GitHub Actions this
+action was created to make "snapshots" for current queue and running job for later analysis.
 
 # Inputs and outputs
 
@@ -34,15 +36,55 @@
 
 ## Outputs
 
-| Output         |                              |
-|----------------|------------------------------|
-| `todo`   | `todo`   |
+| Output             |                                                                                                                                                  |
+|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `workflowRuns`     | A list of workflow runs ([payloads](https://docs.github.com/en/free-pro-team@latest/rest/reference/actions#list-workflow-runs-for-a-repository)) |
+| `nrOfWorkflowRuns` | A number of fetched workflow runs                                                                                                                |
 
 # Examples
 
-### Workflow Run event
+### Fetch GitHub Action queue
 
 ```yaml
+name: Fetch GitHub Actions queue
+on:  # yamllint disable-line rule:truthy
+  push:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+    inputs:
+
+jobs:
+
+  github-actions-fetch-queue-apache-repo:
+    name: "Github Action fetch queue ${{ matrix.organisation }}/${{ matrix.repository }}"
+    runs-on: ubuntu-latest
+    needs: check_gcp_variables
+    strategy:
+      matrix:
+        organisation: ["apache"]
+        repository: ["airflow", "beam"]
+    steps:
+    - name: Fetch GitHub Action queue
+      uses: TobKed/fetch-github-actions-queue@develop
+      id: fetch-queue
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        repository: "${{ matrix.organisation }}/${{ matrix.repository }}"
+    - name: Save to JSON and CSV
+      run: |
+        TIMESTAMP=`date --utc +%Y%m%d_%H%M%SZ`
+        TIMESTAMP_ISO8601=`date --utc +%FT%T%Z`
+        JSON_FILE="${TIMESTAMP}.json"
+        echo ${{ toJson(steps.fetch-queue.outputs.workflowRuns) }} > "${JSON_FILE}"
+        python json_to_csv.py -i $JSON_FILE -o "${TIMESTAMP}.csv" -a "{\"write_timestamp\":\"${TIMESTAMP_ISO8601}\"}"
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{ matrix.repository }}-${{ matrix.repository }}-queue
+        path: |
+          *.json
+          *.csv
 ```
 
 # Development environment
